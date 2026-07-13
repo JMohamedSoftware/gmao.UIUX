@@ -215,7 +215,7 @@ interface GmaoContextType {
   currentUser: User | null;
   darkMode: boolean;
   selectedCampaign: string;
-  rolePermissions: Record<AppRole, RoleDefinition>;
+  rolePermissions: Partial<Record<AppRole, RoleDefinition>>;
   updateRolePermission: (role: AppRole, module: AppModule, action: string, scope: DataScope, isChecked: boolean) => void;
   login: (email: string, password?: string, tenantId?: string, quickRole?: User['role']) => boolean;
   logout: () => void;
@@ -760,7 +760,7 @@ export const GmaoProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [selectedCampaign, setSelectedCampaign] = useState<string>('Campagne 2026');
 
-  const [rolePermissions, setRolePermissions] = useState<Record<AppRole, RoleDefinition>>(DEFAULT_ROLE_PERMISSIONS);
+  const [rolePermissions, setRolePermissions] = useState<Partial<Record<AppRole, RoleDefinition>>>(DEFAULT_ROLE_PERMISSIONS);
 
   const updateRolePermission = (role: AppRole, moduleName: AppModule, action: string, scope: DataScope, isChecked: boolean) => {
     setRolePermissions(prev => {
