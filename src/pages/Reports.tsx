@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useGmao } from '../context/GmaoContext';
 import { usePermissions } from '../hooks/usePermissions';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import domtoimage from 'dom-to-image';
 import { 
   BarChart3, 
   Download, 
@@ -22,21 +25,76 @@ import {
 
 export const Reports: React.FC = () => {
   const { selectedCampaign, workOrders, equipments, incidents } = useGmao();
-  const { isChefEquipe } = usePermissions();
+  const { isChefEquipe, getScope, currentUser } = usePermissions();
   
   const [exporting, setExporting] = useState<string | null>(null);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
 
-  const handleExport = (format: 'pdf' | 'excel') => {
+  
+  const handleExport = async (format: 'pdf' | 'excel') => {
     setExporting(format);
     
-    // Simulate generation and download
-    setTimeout(() => {
-      setExporting(null);
+    try {
+      if (format === 'excel') {
+        const wb = XLSX.utils.book_new();
+        
+        // Feuille 1: KPIs
+        const kpiData = [
+          { Metrique: 'MTBF (Heures)', Valeur: mtbfH.toFixed(2) },
+          { Metrique: 'MTTR (Minutes)', Valeur: avgMTTR.toFixed(2) },
+          { Metrique: 'Disponibilité (%)', Valeur: disponibilite.toFixed(2) },
+          { Metrique: 'Coût Total (TND)', Valeur: totalCost.toFixed(3) },
+          { Metrique: 'Total OTs Terminés', Valeur: completedOTs.length },
+        ];
+        const wsKPI = XLSX.utils.json_to_sheet(kpiData);
+        XLSX.utils.book_append_sheet(wb, wsKPI, 'KPIs');
+
+        // Feuille 2: Work Orders
+        const woData = filteredWorkOrders.map(ot => ({
+          ID: ot.id,
+          Titre: ot.title,
+          Type: ot.type,
+          Statut: ot.status,
+          Equipement: ot.equipmentId,
+          Assigné_A: ot.assignedTo,
+          Date_Creation: ot.createdAt,
+          Date_Debut: ot.actualStartDate || '',
+          Date_Fin: ot.actualEndDate || '',
+          Duree_Minutes: ot.durationMinutes
+        }));
+        const wsWO = XLSX.utils.json_to_sheet(woData);
+        XLSX.utils.book_append_sheet(wb, wsWO, 'Bons de Travail');
+
+        XLSX.writeFile(wb, `Rapport_GMAO_${selectedCampaign}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        
+      } else if (format === 'pdf') {
+        const element = document.getElementById('report-content');
+        if (element) {
+          const imgData = await domtoimage.toPng(element, { bgcolor: '#ffffff' });
+          
+          const img = new Image();
+          img.src = imgData;
+          await new Promise((resolve) => { img.onload = resolve; });
+
+          const pdf = new jsPDF('l', 'mm', 'a4');
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (img.height * pdfWidth) / img.width;
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`Rapport_GMAO_${selectedCampaign}_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+      }
+
       setShowSuccessAlert(true);
       setTimeout(() => setShowSuccessAlert(false), 3000);
-    }, 2000);
+    } catch (error) {
+      console.error('Erreur lors de lexport', error);
+      alert("Une erreur est survenue lors de l'exportation.");
+    } finally {
+      setExporting(null);
+    }
   };
+
 
   // New KPIs Data
   const mainGraphData = [
@@ -48,44 +106,100 @@ export const Reports: React.FC = () => {
     { period: 'Juin', arret: 20, nbOt: 70, cout: 8000, dispo: 99.4 }
   ];
 
-  const topEquipmentsData = [
-    { name: 'Pompe P001', pannes: 18 },
-    { name: 'Chaudière B01', pannes: 15 },
-    { name: 'Convoyeur C02', pannes: 13 },
-    { name: 'Compresseur K1', pannes: 10 },
-    { name: 'Palettiseur M3', pannes: 8 }
-  ];
+  
 
-  const topPannesData = [
-    { type: 'Roulement', count: 18 },
-    { type: 'Courroie', count: 15 },
-    { type: 'Joint d\'étanchéité', count: 11 },
-    { type: 'Capteur', count: 9 },
-    { type: 'Vanne', count: 7 }
-  ];
+  
 
-  const topTechniciansData = [
-    { name: 'Ahmed M.', count: 35 },
-    { name: 'Mohamed T.', count: 29 },
-    { name: 'Ali K.', count: 25 },
-    { name: 'Sami R.', count: 21 }
-  ];
+  
+
+
+
+
+  
+  const scope = getScope('reports');
+  
+  // Filter WorkOrders based on scope
+  const filteredWorkOrders = workOrders.filter(ot => {
+    if (scope === 'toute_usine') return true;
+    if (scope === 'mon_equipe') {
+      // Pour l'instant, on suppose que l'équipe est liée à la campagne ou on affiche tout ce qui n'est pas strictement personnel
+      // Pour une vraie implémentation, on filtrerait par les membres de l'équipe du chef.
+      return true; 
+    }
+    // mes_donnees
+    return ot.assignedTo === currentUser?.name;
+  });
+
+  // Filter Incidents
+  const filteredIncidents = incidents.filter(inc => {
+    if (scope === 'toute_usine') return true;
+    if (scope === 'mon_equipe') return true;
+    return inc.reportedBy === currentUser?.name;
+  });
+
+  // --- Dynamic Data Computation ---
+
+  // Top Equipments en Panne
+  const eqPanneCount = {};
+  filteredIncidents.forEach(inc => {
+    eqPanneCount[inc.equipmentId] = (eqPanneCount[inc.equipmentId] || 0) + 1;
+  });
+  const topEquipmentsData = Object.entries(eqPanneCount)
+    .map(([id, count]) => {
+      const eq = equipments.find(e => e.id === id);
+      return { name: eq ? eq.name : id, pannes: count };
+    })
+    .sort((a, b) => b.pannes - a.pannes)
+    .slice(0, 5);
+
+  if (topEquipmentsData.length === 0) {
+    topEquipmentsData.push({ name: 'Aucune panne', pannes: 0 });
+  }
 
   // Failure comparisons
   const campaignCompareData = [
-    { id: 'EQ-EVAP-001', name: 'Évaporateur Concentrateur 1', pannes25: 8, pannes26: 4, cost25: 18500, cost26: 8000 },
-    { id: 'EQ-BOIL-001', name: 'Chaudière Thermique 1', pannes25: 3, pannes26: 1, cost25: 6400, cost26: 2200 },
-    { id: 'EQ-CONV-001', name: 'Convoyeur à bande Réception', pannes25: 14, pannes26: 18, cost25: 3200, cost26: 5400 },
-    { id: 'EQ-AUTO-001', name: 'Autoclave Stérilisation 1', pannes25: 5, pannes26: 2, cost25: 8900, cost26: 3100 },
-    { id: 'EQ-PACK-001', name: 'Remplisseuse Krones', pannes25: 9, pannes26: 3, cost25: 12400, cost26: 4200 }
+    { id: 'EQ-EVAP-001', name: 'Évaporateur Concentrateur 1', pannes25: 8, pannes26: topEquipmentsData[0]?.pannes || 4, cost25: 18500, cost26: 8000 },
+    { id: 'EQ-BOIL-001', name: 'Chaudière Thermique 1', pannes25: 3, pannes26: topEquipmentsData[1]?.pannes || 1, cost25: 6400, cost26: 2200 }
   ];
 
+  // Top Techniciens
+  const techCount = {};
+  filteredWorkOrders.filter(ot => ot.status === 'Terminé' || ot.status === 'Clôturé').forEach(ot => {
+    if (ot.assignedTo) {
+      techCount[ot.assignedTo] = (techCount[ot.assignedTo] || 0) + 1;
+    }
+  });
+  const topTechniciansData = Object.entries(techCount)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  if (topTechniciansData.length === 0) {
+    topTechniciansData.push({ name: 'Aucun', count: 0 });
+  }
+
+  // Top Types de Pannes
+  const typePanneCount = {};
+  filteredWorkOrders.filter(ot => ot.type === 'Correctif').forEach(ot => {
+    // on utilise un mot clé de la description si pas de type précis
+    const typeStr = ot.description.split(' ')[0] || 'Autre';
+    typePanneCount[typeStr] = (typePanneCount[typeStr] || 0) + 1;
+  });
+  const topPannesData = Object.entries(typePanneCount)
+    .map(([type, count]) => ({ type, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  if (topPannesData.length === 0) {
+    topPannesData.push({ type: 'Aucune', count: 0 });
+  }
+
   // Compute real KPIs from workOrders data
-  const completedOTs = workOrders.filter(ot => ot.status === 'Terminé' || ot.status === 'Clôturé');
-  const delayedOTs = workOrders.filter(ot => ot.status === 'En attente' || ot.status === 'Affecté');
-  const cancelledOTs = workOrders.filter(ot => false); // no 'Annulé' in WorkOrder schema
-  const prevOTs = workOrders.filter(ot => ot.type === 'Préventif');
-  const corrOTs = workOrders.filter(ot => ot.type === 'Correctif');
+  const completedOTs = filteredWorkOrders.filter(ot => ot.status === 'Terminé' || ot.status === 'Clôturé');
+  const delayedOTs = filteredWorkOrders.filter(ot => ot.status === 'En attente' || ot.status === 'Affecté');
+  const cancelledOTs = filteredWorkOrders.filter(ot => false); // no 'Annulé' in WorkOrder schema
+  const prevOTs = filteredWorkOrders.filter(ot => ot.type === 'Préventif');
+  const corrOTs = filteredWorkOrders.filter(ot => ot.type === 'Correctif');
 
   const avgMTTR = completedOTs.length > 0
     ? completedOTs.reduce((acc, ot) => acc + ot.durationMinutes, 0) / completedOTs.length
@@ -99,7 +213,7 @@ export const Reports: React.FC = () => {
   const mtbfH = totalFailures > 0 ? ((totalOperatingH - totalDowntimeH) / totalFailures) : totalOperatingH;
   const disponibilite = totalOperatingH > 0 ? ((totalOperatingH - totalDowntimeH) / totalOperatingH * 100) : 100;
   
-  const totalCost = 45200; // Mock total cost
+  const totalCost = completedOTs.reduce((acc, ot) => acc + (ot.estimatedCost || 150), 0);
   const stockCritique = 15; // Mock critical stock items
 
   // Filter state
@@ -113,7 +227,7 @@ export const Reports: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" id="report-content">
       
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -227,7 +341,7 @@ export const Reports: React.FC = () => {
             <TrendingDown className="w-4 h-4 text-rose-500" />
           </div>
           <span className="text-xl font-black text-slate-700 dark:text-slate-200">
-            {totalCost.toLocaleString()} <span className="text-xs">€</span>
+            {totalCost.toLocaleString()} <span className="text-xs">TND</span>
           </span>
           <p className="text-[10px] text-slate-400 mt-auto">Dépenses globales</p>
         </div>
@@ -309,7 +423,7 @@ export const Reports: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" className="dark:stroke-slate-800" />
                 <XAxis dataKey="period" stroke="#94A3B8" fontSize={10} tickLine={false} />
                 <YAxis yAxisId="left" stroke="#EF4444" fontSize={10} tickLine={false} label={{ value: 'Arrêt (h)', angle: -90, position: 'insideLeft', offset: 10, fill: '#EF4444', fontSize: 10 }} />
-                <YAxis yAxisId="right" orientation="right" stroke="#F59E0B" fontSize={10} tickLine={false} label={{ value: 'Coût (€)', angle: 90, position: 'insideRight', offset: 10, fill: '#F59E0B', fontSize: 10 }} />
+                <YAxis yAxisId="right" orientation="right" stroke="#F59E0B" fontSize={10} tickLine={false} label={{ value: 'Coût (TND)', angle: 90, position: 'insideRight', offset: 10, fill: '#F59E0B', fontSize: 10 }} />
                 <Tooltip 
                   contentStyle={{ 
                     backgroundColor: 'rgba(255,255,255,0.9)', 
@@ -321,7 +435,7 @@ export const Reports: React.FC = () => {
                 <Legend verticalAlign="top" height={36} iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
                 <Bar yAxisId="left" dataKey="arret" name="Temps d'arrêt (h)" fill="#EF4444" fillOpacity={0.85} radius={[4, 4, 0, 0]} />
                 {!isChefEquipe && (
-                  <Line yAxisId="right" type="monotone" dataKey="cout" name="Coût (€)" stroke="#F59E0B" strokeWidth={2} dot={{ fill: '#F59E0B' }} />
+                  <Line yAxisId="right" type="monotone" dataKey="cout" name="Coût (TND)" stroke="#F59E0B" strokeWidth={2} dot={{ fill: '#F59E0B' }} />
                 )}
                 <Line yAxisId="left" type="monotone" dataKey="nbOt" name="Nombre d'OT" stroke="#6366F1" strokeWidth={2} dot={{ fill: '#6366F1' }} />
               </ComposedChart>
@@ -432,7 +546,7 @@ export const Reports: React.FC = () => {
                   <div className="text-center">
                     <span className="text-[9px] text-slate-400 block uppercase">Coût Maintenance</span>
                     <span className="text-slate-700 dark:text-slate-350 font-mono">
-                      {row.cost25.toLocaleString()} € <span className="text-slate-300 dark:text-slate-700">➔</span> {row.cost26.toLocaleString()} €
+                      {row.cost25.toLocaleString()} TND <span className="text-slate-300 dark:text-slate-700">➔</span> {row.cost26.toLocaleString()} TND
                     </span>
                   </div>
                   )}
@@ -444,12 +558,12 @@ export const Reports: React.FC = () => {
                     {costSavings > 0 ? (
                       <span className="text-emerald-500 flex items-center gap-0.5 justify-end">
                         <TrendingDown className="w-3.5 h-3.5" />
-                        +{costSavings.toLocaleString()} €
+                        +{costSavings.toLocaleString()} TND
                       </span>
                     ) : (
                       <span className="text-rose-500 flex items-center gap-0.5 justify-end">
                         <TrendingUp className="w-3.5 h-3.5" />
-                        {costSavings.toLocaleString()} €
+                        {costSavings.toLocaleString()} TND
                       </span>
                     )}
                   </div>
