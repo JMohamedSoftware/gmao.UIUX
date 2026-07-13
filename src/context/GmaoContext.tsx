@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AppRole, AppModule, DataScope, RoleDefinition, DEFAULT_ROLE_PERMISSIONS } from '../config/permissions';
 
 // ==================================================
 // TYPES & INTERFACES
@@ -758,6 +759,29 @@ export const GmaoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [selectedCampaign, setSelectedCampaign] = useState<string>('Campagne 2026');
+
+  const [rolePermissions, setRolePermissions] = useState<Record<AppRole, RoleDefinition>>(DEFAULT_ROLE_PERMISSIONS);
+
+  const updateRolePermission = (role: AppRole, moduleName: AppModule, action: string, scope: DataScope, isChecked: boolean) => {
+    setRolePermissions(prev => {
+      const newPerms = { ...prev };
+      if (!newPerms[role]) newPerms[role] = {};
+      const roleDef = newPerms[role] as any;
+      if (!roleDef[moduleName]) roleDef[moduleName] = { actions: [], scope: 'mes_donnees' };
+      
+      const mod = roleDef[moduleName];
+      mod.scope = scope;
+      
+      const hasAction = mod.actions.includes(action);
+      if (isChecked && !hasAction) {
+        mod.actions = [...mod.actions, action];
+      } else if (!isChecked && hasAction) {
+        mod.actions = mod.actions.filter((a: string) => a !== action);
+      }
+      
+      return newPerms;
+    });
+  };
 
   // Shared platform notifications
   const [notifications, setNotifications] = useState<Notification[]>([]);
