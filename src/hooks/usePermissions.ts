@@ -18,7 +18,7 @@ export function usePermissions() {
    * Can the current user access this module?
    */
   const canAccess = (moduleName: string): boolean => {
-    if (role === 'SuperAdmin') return true;
+    if (role === 'SuperAdmin' || role === 'CompanyAdmin') return true;
     return !!(roleDef as any)[moduleName];
   };
 
@@ -27,7 +27,7 @@ export function usePermissions() {
    * Usage: canDo('workorders', 'creer')
    */
   const canDo = (moduleName: AppModule, action: string): boolean => {
-    if (role === 'SuperAdmin') return true;
+    if (role === 'SuperAdmin' || role === 'CompanyAdmin') return true;
     const mod = (roleDef as any)[moduleName];
     if (!mod) return false;
     return mod.actions.includes(action);
@@ -37,7 +37,7 @@ export function usePermissions() {
    * Get the data scope for a module
    */
   const getScope = (moduleName: AppModule): DataScope => {
-    if (role === 'SuperAdmin') return 'toute_usine';
+    if (role === 'SuperAdmin' || role === 'CompanyAdmin') return 'toute_usine';
     const mod = (roleDef as any)[moduleName];
     return mod ? mod.scope : 'mes_donnees';
   };

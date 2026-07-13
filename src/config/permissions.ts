@@ -26,29 +26,7 @@ export interface ModulePermissions {
 
 export type RoleDefinition = Partial<Record<AppModule, ModulePermissions>>;
 
-export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, RoleDefinition> = {
-  'SuperAdmin': {
-    dashboard: { actions: ['voir'], scope: 'toute_usine' },
-    equipment: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'importer', 'exporter'], scope: 'toute_usine' },
-    preventive: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'lancer', 'suspendre', 'approuver'], scope: 'toute_usine' },
-    corrective: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'valider', 'rejeter', 'planifier', 'creer_ot'], scope: 'toute_usine' },
-    workorders: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'assigner', 'demarrer', 'suspendre', 'terminer', 'cloturer', 'exporter'], scope: 'toute_usine' },
-    inventory: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'entree', 'sortie', 'inventaire'], scope: 'toute_usine' },
-    suppliers: { actions: ['voir', 'creer', 'modifier', 'supprimer'], scope: 'toute_usine' },
-    reports: { actions: ['voir', 'exporter_pdf', 'exporter_excel', 'creer_rapport'], scope: 'toute_usine' },
-    admin: { actions: ['voir', 'gerer_utilisateurs', 'gerer_roles', 'parametres'], scope: 'toute_usine' }
-  },
-  'CompanyAdmin': {
-    dashboard: { actions: ['voir'], scope: 'toute_usine' },
-    equipment: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'importer', 'exporter'], scope: 'toute_usine' },
-    preventive: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'lancer', 'suspendre', 'approuver'], scope: 'toute_usine' },
-    corrective: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'valider', 'rejeter', 'planifier', 'creer_ot'], scope: 'toute_usine' },
-    workorders: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'assigner', 'demarrer', 'suspendre', 'terminer', 'cloturer', 'exporter'], scope: 'toute_usine' },
-    inventory: { actions: ['voir', 'creer', 'modifier', 'supprimer', 'entree', 'sortie', 'inventaire'], scope: 'toute_usine' },
-    suppliers: { actions: ['voir', 'creer', 'modifier', 'supprimer'], scope: 'toute_usine' },
-    reports: { actions: ['voir', 'exporter_pdf', 'exporter_excel', 'creer_rapport'], scope: 'toute_usine' },
-    admin: { actions: ['voir', 'gerer_utilisateurs', 'gerer_roles', 'parametres'], scope: 'toute_usine' }
-  },
+export const DEFAULT_ROLE_PERMISSIONS: Partial<Record<AppRole, RoleDefinition>> = {
   'Responsable Maintenance': {
     dashboard: { actions: ['voir'], scope: 'toute_usine' },
     equipment: { actions: ['voir', 'creer', 'modifier', 'importer', 'exporter'], scope: 'toute_usine' },
