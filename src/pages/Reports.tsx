@@ -24,7 +24,7 @@ import {
 } from 'recharts';
 
 export const Reports: React.FC = () => {
-  const { selectedCampaign, workOrders, equipments, incidents, user: currentUser } = useGmao();
+  const { selectedCampaign, workOrders, equipments, incidents, currentUser } = useGmao();
   const { isChefEquipe, getScope } = usePermissions();
   
   const [exporting, setExporting] = useState<string | null>(null);
@@ -213,7 +213,7 @@ export const Reports: React.FC = () => {
   const mtbfH = totalFailures > 0 ? ((totalOperatingH - totalDowntimeH) / totalFailures) : totalOperatingH;
   const disponibilite = totalOperatingH > 0 ? ((totalOperatingH - totalDowntimeH) / totalOperatingH * 100) : 100;
   
-  const totalCost = completedOTs.reduce((acc, ot) => acc + (ot.estimatedCost || 150), 0);
+  const totalCost = completedOTs.reduce((acc, ot) => acc + ((ot.durationMinutes * 0.5) || 150), 0);
   const stockCritique = 15; // Mock critical stock items
 
   // Filter state
