@@ -1,35 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { useGmao, User, Tenant } from '../context/GmaoContext';
-import { ShieldAlert, Mail, Lock, ArrowRight, UserCheck, ChevronRight } from 'lucide-react';
+import { useGmao } from '../context/GmaoContext';
+import { User } from '../context/GmaoContext';
+import { UserCircle2, KeyRound, ArrowRight, ShieldCheck, Bug } from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: () => void;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const { login, tenants } = useGmao();
-  
-  // URL routing scoping variables
-  const queryParams = new URLSearchParams(window.location.search);
-  const tenantParam = queryParams.get('tenant') || queryParams.get('company') || '';
-  const autologinParam = queryParams.get('autologin') || '';
-  
-  const isLockedSuperAdmin = !!tenantParam && (tenantParam.toLowerCase() === 'admin' || tenantParam.toLowerCase() === 'superadmin');
-  const isLockedTenant = !!tenantParam && !isLockedSuperAdmin;
-
-  // Locate URL matched tenant
-  const activeTenant = tenants.find(t => 
-    t.id.toLowerCase() === tenantParam.toLowerCase() || 
-    t.domain.toLowerCase().includes(tenantParam.toLowerCase()) ||
-    t.name.toLowerCase().replace(/[^a-z0-9]/g, '') === tenantParam.toLowerCase()
-  );
-
+  const { login } = useGmao();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [error, setError] = useState('');
+  const [isHovering, setIsHovering] = useState(false);
 
   // Auto login helper for headless Chrome print pipelines
   useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const autologinParam = queryParams.get('autologin') || '';
     if (autologinParam) {
       if (autologinParam === 'admin' || autologinParam === 'superadmin') {
         const ok = login('admin@gmao-saas.com', undefined, undefined, 'SuperAdmin');
@@ -42,273 +30,149 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         if (ok) onLoginSuccess();
       }
     }
-  }, [autologinParam]);
+  }, [login, onLoginSuccess]);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setErrorMsg('Veuillez saisir un e-mail et un mot de passe.');
-      return;
-    }
-    
-    if (isLockedSuperAdmin) {
+    setError('');
+
+    if (email === 'admin@gmao-saas.com') {
       const success = login(email, password, undefined, 'SuperAdmin');
       if (success) {
         onLoginSuccess();
       } else {
-        setErrorMsg('Identifiants invalides.');
+        setError("Mot de passe incorrect.");
       }
     } else {
-      const tenantId = activeTenant ? activeTenant.id : 'tenant-midi'; // default for simulation if none provided
-      const success = login(email, password, tenantId, 'CompanyAdmin');
+      const success = login(email, password, 'tenant-midi', 'CompanyAdmin');
       if (success) {
         onLoginSuccess();
       } else {
-        setErrorMsg('Identifiants invalides ou espace suspendu.');
+        setError("Identifiant ou mot de passe incorrect.");
       }
     }
   };
 
-  const handleQuickLogin = (role: User['role'], tenantId: string) => {
-    const emailMap: Record<string, string> = {
-      'tenant-midi:CompanyAdmin': 'admin@midi.com',
-      'tenant-midi:Responsable Maintenance': 'k.gherbi@midi.com',
-      "tenant-midi:Chef d'équipe": 'j.bricole@midi.com',
-      'tenant-midi:Technicien': 'a.bensaid@midi.com',
-      'tenant-midi:Production': 'y.mansouri@midi.com',
-      
-      'tenant-nord:CompanyAdmin': 'admin@nord.com',
-      'tenant-nord:Responsable Maintenance': 'j.dupont@nord.com',
-      'tenant-nord:Technicien': 'm.martin@nord.com',
-      'tenant-nord:Production': 'y.mansouri@nord.com',
-      
-      'superadmin:SuperAdmin': 'admin@gmao-saas.com'
-    };
-    
-    const key = tenantId === 'superadmin' ? 'superadmin:SuperAdmin' : `${tenantId}:${role}`;
-    const emailForRole = emailMap[key] || `user@${tenantId}.com`;
-    
-    const success = login(emailForRole, undefined, tenantId === 'superadmin' ? undefined : tenantId, role);
-    if (success) {
-      onLoginSuccess();
-    } else {
-      setErrorMsg('Échec de la simulation.');
-    }
+  const handleQuickLogin = (role: User['role'], emailForRole: string, isSuperAdmin = false) => {
+    const success = login(emailForRole, undefined, isSuperAdmin ? undefined : 'tenant-midi', role);
+    if (success) onLoginSuccess();
   };
-
-  // Determine dynamic colors for login page theming
-  const getThemeColors = () => {
-    if (isLockedSuperAdmin) {
-      return { primary: '#F59E0B', secondary: '#0F172A', name: 'Super Admin Desk' }; 
-    }
-    if (activeTenant) {
-      if (activeTenant.id === 'tenant-midi') {
-        return { primary: '#EF4444', secondary: '#F97316', name: activeTenant.name }; 
-      } else if (activeTenant.id === 'tenant-nord') {
-        return { primary: '#10B981', secondary: '#3B82F6', name: activeTenant.name }; 
-      }
-      return { primary: '#2563EB', secondary: '#0EA5E9', name: activeTenant.name };
-    }
-    return { primary: '#EF4444', secondary: '#F97316', name: 'POMODORO CMMS' }; 
-  };
-
-  const themeConfig = getThemeColors();
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center font-sans relative overflow-hidden bg-slate-900">
+    <div className="min-h-screen w-full flex relative overflow-hidden bg-slate-900 font-sans">
       
-      {/* Inject custom variables dynamically to override standard Tailwind theme colors */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        :root {
-          --color-primary: ${themeConfig.primary} !important;
-          --color-secondary: ${themeConfig.secondary} !important;
-        }
-      ` }} />
-
-      {/* Full Page Background Image */}
+      {/* Background Image - Left Side Full Bleed */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-60" 
+        className="absolute inset-0 w-[60%] lg:w-[65%] h-full bg-cover bg-center bg-no-repeat transition-transform duration-[10s] hover:scale-105" 
         style={{ backgroundImage: "url('/tomate.jpg')" }}
-      />
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+      </div>
 
-      {/* Center Container */}
-      <div className="relative z-10 w-full max-w-lg p-6">
-        
-        {/* Glassmorphism Card */}
-        <div className="bg-white/10 dark:bg-slate-900/40 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 rounded-[2rem] p-8 shadow-2xl overflow-hidden relative">
+      {/* The Organic Blob Split (Right Side) */}
+      <div 
+        className="absolute top-0 bottom-0 right-0 w-full lg:w-[50%] bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl shadow-[0_0_100px_rgba(0,0,0,0.5)] flex items-center justify-center p-8 lg:p-16 transition-all duration-1000"
+        style={{
+          // Creates an organic, wavy separation instead of a straight line
+          clipPath: "polygon(15% 0, 100% 0, 100% 100%, 0% 100%, 8% 50%)"
+        }}
+      >
+        {/* Decorative elements behind the form */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-rose-500/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-32 left-0 w-80 h-80 bg-amber-500/20 rounded-full blur-[80px] pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10 flex flex-col gap-8 ml-[10%]">
           
-          {/* Subtle gradient glow inside card */}
-          <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-
-          {/* Logo & Header */}
-          <div className="flex flex-col items-center gap-4 mb-8 relative z-10">
-            <div className="w-20 h-20 rounded-full bg-white/20 p-1 shadow-lg backdrop-blur-md flex items-center justify-center overflow-hidden border border-white/30">
-              <img 
-                src="/tomate-rouge-juteuse-gouttes-eau_191095-79653.avif" 
-                alt="Logo" 
-                className="w-full h-full object-cover rounded-full"
-              />
+          {/* Header */}
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-500 to-red-700 p-1 shadow-lg shadow-rose-500/30">
+                <img 
+                  src="/tomate-rouge-juteuse-gouttes-eau_191095-79653.avif" 
+                  alt="Logo" 
+                  className="w-full h-full object-cover rounded-full border-2 border-white/50"
+                />
+              </div>
+              <div>
+                <h1 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight">POMODORO</h1>
+                <p className="text-rose-600 dark:text-rose-400 font-bold tracking-widest uppercase text-xs">Portail Industriel</p>
+              </div>
             </div>
-            <div className="text-center">
-              <h1 className="font-extrabold text-2xl tracking-tight text-white drop-shadow-md">
-                {themeConfig.name}
-              </h1>
-              <p className="text-xs text-slate-300 mt-1 font-medium tracking-wide">
-                Portail d'Authentification
-              </p>
-            </div>
+            <h2 className="text-3xl font-bold text-slate-700 dark:text-slate-200 mt-4 leading-tight">
+              Bienvenue sur <br/><span className="text-rose-500">votre espace</span>
+            </h2>
           </div>
 
-          {errorMsg && (
-            <div className="mb-6 p-3 rounded-xl bg-red-500/20 border border-red-500/50 text-red-100 text-xs flex items-center gap-2 backdrop-blur-sm relative z-10">
-              <ShieldAlert className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {/* Unified Login Form */}
-          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5 relative z-10">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-white/80 font-bold uppercase tracking-wider text-[10px] ml-1">
-                Adresse E-mail
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                <input
-                  type="email"
-                  required
-                  placeholder="admin@entreprise.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full py-3.5 pl-11 pr-4 bg-black/20 border border-white/10 rounded-2xl outline-none focus:border-white/40 focus:bg-black/30 transition-all font-semibold text-white placeholder:text-white/30 text-sm"
-                />
+          {/* Form */}
+          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-6 mt-4">
+            
+            {error && (
+              <div className="bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-500/50 text-rose-600 dark:text-rose-400 p-4 rounded-2xl flex items-center gap-3 animate-[shake_0.5s_ease-in-out]">
+                <ShieldCheck className="w-6 h-6 flex-shrink-0" />
+                <span className="font-bold">{error}</span>
               </div>
-            </div>
+            )}
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-white/80 font-bold uppercase tracking-wider text-[10px] ml-1">
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full py-3.5 pl-11 pr-4 bg-black/20 border border-white/10 rounded-2xl outline-none focus:border-white/40 focus:bg-black/30 transition-all font-semibold text-white placeholder:text-white/30 text-sm"
-                />
+            {/* Email Field with Giant Icon */}
+            <div className="group relative">
+              <div className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-l-[2rem] border-y border-l border-slate-200 dark:border-slate-700 group-focus-within:bg-rose-50 dark:group-focus-within:bg-rose-500/10 group-focus-within:border-rose-500 transition-colors z-10">
+                <UserCircle2 className="w-8 h-8 text-slate-400 group-focus-within:text-rose-500 transition-colors" />
               </div>
+              <input 
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Votre identifiant"
+                className="w-full h-16 pl-20 pr-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[2rem] text-lg text-slate-800 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 transition-all shadow-sm relative z-0"
+              />
             </div>
 
+            {/* Password Field with Giant Icon */}
+            <div className="group relative">
+              <div className="absolute left-0 top-0 bottom-0 w-16 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-l-[2rem] border-y border-l border-slate-200 dark:border-slate-700 group-focus-within:bg-rose-50 dark:group-focus-within:bg-rose-500/10 group-focus-within:border-rose-500 transition-colors z-10">
+                <KeyRound className="w-8 h-8 text-slate-400 group-focus-within:text-rose-500 transition-colors" />
+              </div>
+              <input 
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mot de passe"
+                className="w-full h-16 pl-20 pr-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[2rem] text-lg text-slate-800 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/20 transition-all shadow-sm font-mono tracking-widest relative z-0"
+              />
+            </div>
+
+            {/* Giant Submit Button */}
             <button
               type="submit"
-              className="w-full py-3.5 bg-primary hover:bg-primary/90 text-white font-extrabold rounded-2xl shadow-[0_0_20px_rgba(var(--color-primary),0.3)] transition-transform hover:scale-[1.02] active:scale-[0.98] mt-2 flex items-center justify-center gap-2 cursor-pointer"
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}
+              className="mt-4 w-full h-16 bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-400 text-white rounded-[2rem] text-xl font-black flex items-center justify-between px-8 shadow-xl shadow-rose-500/30 hover:shadow-rose-500/50 hover:scale-[1.02] active:scale-95 transition-all"
             >
-              <span>Se Connecter</span>
-              <ArrowRight className="w-5 h-5" />
+              <span>Accéder</span>
+              <div className={`w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm transition-transform duration-300 ${isHovering ? 'translate-x-2' : ''}`}>
+                <ArrowRight className="w-5 h-5 text-white" />
+              </div>
             </button>
           </form>
 
-          {/* Comptes de Test - All Actor Accounts */}
-          <div className="mt-8 pt-6 border-t border-white/10 relative z-10">
-            <span className="text-[10px] text-white/60 font-bold uppercase block mb-3 text-center tracking-widest">
-              Comptes de Démonstration
+          {/* Dev Quick Logins (Subtle) */}
+          <div className="mt-12 pt-6 border-t border-slate-200/50 dark:border-slate-800 flex flex-wrap justify-center gap-2 opacity-30 hover:opacity-100 transition-opacity">
+            <span className="w-full text-center text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-2 flex items-center justify-center gap-1">
+              <Bug className="w-3 h-3" /> Mode Développeur
             </span>
-
-            {/* SuperAdmin */}
-            <div className="mb-3">
-              <span className="text-[9px] font-bold text-amber-400/80 uppercase tracking-widest block mb-1.5 ml-1">🛡 Super Admin</span>
-              <button
-                onClick={() => handleQuickLogin('SuperAdmin', 'superadmin')}
-                className="w-full py-2.5 px-4 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-400/20 rounded-xl flex justify-between items-center text-white/80 font-semibold text-xs transition-all cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-full bg-amber-400/20 flex items-center justify-center shrink-0">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-white/90 font-bold text-[11px]">Admin Plateforme SaaS</div>
-                    <div className="text-white/40 text-[9px] font-mono">admin@gmao-saas.com</div>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-white/30 group-hover:text-white/60 transition-colors" />
-              </button>
-            </div>
-
-            {/* Conserves du Midi */}
-            <div className="mb-3">
-              <span className="text-[9px] font-bold text-rose-400/80 uppercase tracking-widest block mb-1.5 ml-1">🏭 Conserves du Midi</span>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  { role: 'CompanyAdmin' as const, label: 'Admin Entreprise', icon: <UserCheck className="w-3.5 h-3.5 text-rose-400" />, email: 'admin@midi.com', color: 'rose' },
-                  { role: 'Responsable Maintenance' as const, label: 'Resp. Maintenance', icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />, email: 'k.gherbi@midi.com', color: 'emerald' },
-                  { role: "Chef d'équipe" as User['role'], label: "Chef d'équipe", icon: <UserCheck className="w-3.5 h-3.5 text-orange-400" />, email: 'j.bricole@midi.com', color: 'orange' },
-                  { role: 'Technicien' as const, label: 'Technicien', icon: <UserCheck className="w-3.5 h-3.5 text-sky-400" />, email: 'a.bensaid@midi.com', color: 'sky' },
-                  { role: 'Production' as const, label: 'Opérateur Production', icon: <UserCheck className="w-3.5 h-3.5 text-violet-400" />, email: 'y.mansouri@midi.com', color: 'violet' },
-                ].map(acc => (
-                  <button
-                    key={acc.role}
-                    onClick={() => handleQuickLogin(acc.role, 'tenant-midi')}
-                    className="w-full py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex justify-between items-center text-white/80 font-semibold text-xs transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0`}>
-                        {acc.icon}
-                      </div>
-                      <div className="text-left">
-                        <div className="text-white/90 font-bold text-[11px]">{acc.label}</div>
-                        <div className="text-white/40 text-[9px] font-mono">{acc.email}</div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-
-            {/* Tomates du Nord */}
-            <div>
-              <span className="text-[9px] font-bold text-teal-400/80 uppercase tracking-widest block mb-1.5 ml-1">🏭 Tomates du Nord</span>
-              <div className="flex flex-col gap-1.5">
-                {[
-                  { role: 'CompanyAdmin' as const, label: 'Admin Entreprise', icon: <UserCheck className="w-3.5 h-3.5 text-teal-400" />, email: 'admin@nord.com' },
-                  { role: 'Responsable Maintenance' as const, label: 'Resp. Maintenance', icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />, email: 'j.dupont@nord.com' },
-                  { role: 'Technicien' as const, label: 'Technicien', icon: <UserCheck className="w-3.5 h-3.5 text-sky-400" />, email: 'm.martin@nord.com' },
-                  { role: 'Production' as const, label: 'Opérateur Production', icon: <UserCheck className="w-3.5 h-3.5 text-violet-400" />, email: 'y.mansouri@nord.com' },
-                ].map(acc => (
-                  <button
-                    key={acc.role}
-                    onClick={() => handleQuickLogin(acc.role, 'tenant-nord')}
-                    className="w-full py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex justify-between items-center text-white/80 font-semibold text-xs transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                        {acc.icon}
-                      </div>
-                      <div className="text-left">
-                        <div className="text-white/90 font-bold text-[11px]">{acc.label}</div>
-                        <div className="text-white/40 text-[9px] font-mono">{acc.email}</div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-3.5 h-3.5 text-white/30 group-hover:text-white/60 transition-colors" />
-                  </button>
-                ))}
-              </div>
-            </div>
+            <button onClick={() => handleQuickLogin('SuperAdmin', 'admin@gmao-saas.com', true)} className="px-3 py-1 bg-rose-100 dark:bg-rose-900/40 rounded-full text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-200 transition-colors">SuperAdmin</button>
+            <button onClick={() => handleQuickLogin('CompanyAdmin', 'admin@midi.com')} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-600 transition-colors">CompanyAdmin</button>
+            <button onClick={() => handleQuickLogin('Producteur', 'prod@midi.com')} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-600 transition-colors">Producteur</button>
+            <button onClick={() => handleQuickLogin('Responsable Maintenance', 'resp@midi.com')} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-600 transition-colors">Responsable</button>
+            <button onClick={() => handleQuickLogin("Chef d'équipe", 'chef@midi.com')} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-600 transition-colors">Chef d'équipe</button>
+            <button onClick={() => handleQuickLogin('Technicien', 'tech@midi.com')} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-600 transition-colors">Technicien</button>
           </div>
 
         </div>
-
-        {/* Footer info */}
-        <p className="text-[10px] text-center text-white/40 font-semibold mt-6 tracking-wide drop-shadow-md">
-          POMODORO CMMS v2.1 • Solution certifiée ISO 55001
-        </p>
-
       </div>
+
     </div>
   );
 };

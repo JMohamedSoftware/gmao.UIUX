@@ -24,8 +24,8 @@ import {
 } from 'recharts';
 
 export const Reports: React.FC = () => {
-  const { selectedCampaign, workOrders, equipments, incidents } = useGmao();
-  const { isChefEquipe, getScope, currentUser } = usePermissions();
+  const { selectedCampaign, workOrders, equipments, incidents, user: currentUser } = useGmao();
+  const { isChefEquipe, getScope } = usePermissions();
   
   const [exporting, setExporting] = useState<string | null>(null);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
@@ -56,10 +56,10 @@ export const Reports: React.FC = () => {
           Type: ot.type,
           Statut: ot.status,
           Equipement: ot.equipmentId,
-          Assigné_A: ot.assignedTo,
-          Date_Creation: ot.createdAt,
-          Date_Debut: ot.actualStartDate || '',
-          Date_Fin: ot.actualEndDate || '',
+          Assigné_A: ot.technicianId,
+          Date_Creation: ot.createdDate,
+          Date_Debut: ot.startDate || '',
+          Date_Fin: ot.endDate || '',
           Duree_Minutes: ot.durationMinutes
         }));
         const wsWO = XLSX.utils.json_to_sheet(woData);
@@ -127,7 +127,7 @@ export const Reports: React.FC = () => {
       return true; 
     }
     // mes_donnees
-    return ot.assignedTo === currentUser?.name;
+    return ot.technicianId === currentUser?.name;
   });
 
   // Filter Incidents
@@ -140,7 +140,7 @@ export const Reports: React.FC = () => {
   // --- Dynamic Data Computation ---
 
   // Top Equipments en Panne
-  const eqPanneCount = {};
+  const eqPanneCount: Record<string, number> = {};
   filteredIncidents.forEach(inc => {
     eqPanneCount[inc.equipmentId] = (eqPanneCount[inc.equipmentId] || 0) + 1;
   });
@@ -149,7 +149,7 @@ export const Reports: React.FC = () => {
       const eq = equipments.find(e => e.id === id);
       return { name: eq ? eq.name : id, pannes: count };
     })
-    .sort((a, b) => b.pannes - a.pannes)
+    .sort((a: any, b: any) => b.pannes - a.pannes)
     .slice(0, 5);
 
   if (topEquipmentsData.length === 0) {
@@ -163,15 +163,15 @@ export const Reports: React.FC = () => {
   ];
 
   // Top Techniciens
-  const techCount = {};
+  const techCount: Record<string, number> = {};
   filteredWorkOrders.filter(ot => ot.status === 'Terminé' || ot.status === 'Clôturé').forEach(ot => {
-    if (ot.assignedTo) {
-      techCount[ot.assignedTo] = (techCount[ot.assignedTo] || 0) + 1;
+    if (ot.technicianId) {
+      techCount[ot.technicianId] = (techCount[ot.technicianId] || 0) + 1;
     }
   });
   const topTechniciansData = Object.entries(techCount)
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a: any, b: any) => b.count - a.count)
     .slice(0, 5);
 
   if (topTechniciansData.length === 0) {
@@ -179,7 +179,7 @@ export const Reports: React.FC = () => {
   }
 
   // Top Types de Pannes
-  const typePanneCount = {};
+  const typePanneCount: Record<string, number> = {};
   filteredWorkOrders.filter(ot => ot.type === 'Correctif').forEach(ot => {
     // on utilise un mot clé de la description si pas de type précis
     const typeStr = ot.description.split(' ')[0] || 'Autre';
@@ -187,7 +187,7 @@ export const Reports: React.FC = () => {
   });
   const topPannesData = Object.entries(typePanneCount)
     .map(([type, count]) => ({ type, count }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a: any, b: any) => b.count - a.count)
     .slice(0, 5);
 
   if (topPannesData.length === 0) {
