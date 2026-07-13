@@ -242,6 +242,7 @@ export const Admin: React.FC = () => {
                   <tbody className="text-xs text-slate-700 dark:text-slate-300">
                     {(Object.keys(rolePermissions) as AppRole[]).map((role) => {
                       const def = rolePermissions[role];
+                      if (!def) return null;
                       const modules = Object.keys(def) as AppModule[];
                       
                       // Define possible actions per module roughly
