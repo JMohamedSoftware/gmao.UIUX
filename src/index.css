@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  --color-primary: #2563EB;
+  --color-secondary: #0EA5E9;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+  --color-accent-orange: #F97316;
+  
+  --color-app-bg-light: #F5F7FA;
+  --color-app-bg-dark: #0F172A;
+  
+  --radius-custom-sm: 12px;
+  --radius-custom-md: 18px;
+  --radius-custom-lg: 24px;
+  --radius-custom-xl: 28px;
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+/* Custom Global Styles */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--color-app-bg-light);
+  color: #1E293B;
+  overflow-x: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.1);
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.dark html, .dark body, .dark #root {
+  background-color: var(--color-app-bg-dark);
+  color: #F8FAFC;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.04);
+}
+
+.dark .glass-panel {
+  background: rgba(30, 41, 59, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+}
+
+.glass-panel-heavy {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 40px 0 rgba(31, 38, 135, 0.08);
+}
+
+.dark .glass-panel-heavy {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* Soft Neumorphism */
+.neumorphic-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 10px 30px -10px rgba(0, 0, 0, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.dark .neumorphic-card {
+  background: rgba(30, 41, 59, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  box-shadow: 
+    0 10px 30px -10px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.neumorphic-inset {
+  box-shadow: 
+    inset 2px 2px 5px rgba(0,0,0,0.05), 
+    inset -3px -3px 7px rgba(255,255,255,0.7);
+}
+
+.dark .neumorphic-inset {
+  box-shadow: 
+    inset 2px 2px 5px rgba(0,0,0,0.4), 
+    inset -3px -3px 7px rgba(255,255,255,0.05);
+}
+
+/* Interactive animations */
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 40px -15px rgba(31, 38, 135, 0.08);
+}
+
+.dark .hover-lift:hover {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4);
+}
+
+/* Grid overlay background */
+.grid-bg {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+}
+
+.dark .grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+}
+
+/* Radial spotlight effect */
+.spotlight {
+  background: radial-gradient(800px circle at var(--x, 50%) var(--y, 50%), rgba(37, 99, 235, 0.06), transparent 80%);
+}
+
+.dark .spotlight {
+  background: radial-gradient(800px circle at var(--x, 50%) var(--y, 50%), rgba(14, 165, 233, 0.08), transparent 80%);
+}
+
+/* Hide defaults */
+#root {
+  display: block;
+  text-align: left;
+}
