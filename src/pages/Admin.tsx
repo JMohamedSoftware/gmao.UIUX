@@ -32,6 +32,8 @@ export const Admin: React.FC = () => {
   const [successSaved, setSuccessSaved] = useState(false);
   const [language, setLanguage] = useState<'fr' | 'en'>('fr');
   const [emailAlerts, setEmailAlerts] = useState(true);
+  
+  const [selectedRole, setSelectedRole] = useState<AppRole>('Technicien');
 
   // Active users registry list
   const activeTenant = tenants.find(t => t.id === currentTenantId);
@@ -227,85 +229,98 @@ export const Admin: React.FC = () => {
             </div>
 
             {/* Custom checkboxes table -> Now RBAC Matrix */}
-            <div className="flex flex-col gap-4 text-xs">
-              <p className="text-[10px] text-slate-500 mb-2">Visualisation de la nouvelle architecture RBAC (Module &gt; Action &gt; Périmètre).</p>
-              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase tracking-wider text-slate-500">
-                      <th className="p-3 border-b border-slate-200 dark:border-slate-800">Rôle</th>
-                      <th className="p-3 border-b border-slate-200 dark:border-slate-800">Module</th>
-                      <th className="p-3 border-b border-slate-200 dark:border-slate-800">Actions Permises</th>
-                      <th className="p-3 border-b border-slate-200 dark:border-slate-800">Périmètre (Scope)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs text-slate-700 dark:text-slate-300">
-                    {(Object.keys(rolePermissions) as AppRole[]).map((role) => {
-                      const def = rolePermissions[role];
-                      if (!def) return null;
-                      const modules = Object.keys(def) as AppModule[];
-                      
-                      // Define possible actions per module roughly
-                      const moduleAvailableActions: Record<AppModule, string[]> = {
-                        dashboard: ['voir'],
-                        equipment: ['voir', 'creer', 'modifier', 'supprimer', 'importer', 'exporter'],
-                        preventive: ['voir', 'creer', 'modifier', 'supprimer', 'lancer', 'suspendre', 'approuver', 'executer'],
-                        corrective: ['voir', 'creer', 'modifier', 'supprimer', 'valider', 'rejeter', 'planifier', 'creer_ot'],
-                        workorders: ['voir', 'creer', 'modifier', 'supprimer', 'assigner', 'demarrer', 'suspendre', 'terminer', 'cloturer', 'exporter'],
-                        inventory: ['voir', 'creer', 'modifier', 'supprimer', 'entree', 'sortie', 'inventaire'],
-                        suppliers: ['voir', 'creer', 'modifier', 'supprimer'],
-                        reports: ['voir', 'exporter_pdf', 'exporter_excel', 'creer_rapport'],
-                        admin: ['voir', 'gerer_utilisateurs', 'gerer_roles', 'parametres']
-                      };
+            <div className="flex flex-col md:flex-row gap-6 mt-4">
+              {/* Left Column: Roles List */}
+              <div className="w-full md:w-1/4 flex flex-col gap-2">
+                <p className="text-[10px] text-slate-500 mb-2 uppercase font-bold tracking-wider">Sélectionner un rôle</p>
+                {(Object.keys(rolePermissions) as AppRole[]).map(role => (
+                  <button
+                    key={role}
+                    onClick={() => setSelectedRole(role)}
+                    className={`text-left px-4 py-3 rounded-xl font-bold text-sm transition-all border ${selectedRole === role ? 'bg-primary text-white border-primary shadow-md shadow-primary/20' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-primary/40'}`}
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
 
-                      return (
-                        <tr key={role} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-                          <td className="p-3 font-bold align-top">{role}</td>
-                          <td colSpan={3} className="p-0 align-top">
-                            {modules.map((mod) => {
-                              const perms = def[mod];
-                              if (!perms) return null;
-                              return (
-                                <div key={mod} className="flex flex-col sm:flex-row py-2 px-3 border-b border-slate-100 dark:border-slate-800/50 last:border-0 gap-4">
-                                  <div className="w-40 font-semibold text-slate-600 dark:text-slate-400 capitalize pt-1">{mod}</div>
-                                  
-                                  <div className="flex-1 flex flex-wrap gap-3">
-                                    {moduleAvailableActions[mod].map((act) => {
-                                      const hasAction = perms.actions.includes(act);
-                                      return (
-                                        <label key={act} className="flex items-center gap-1.5 cursor-pointer">
-                                          <input 
-                                            type="checkbox" 
-                                            checked={hasAction}
-                                            onChange={(e) => updateRolePermission(role, mod, act, perms.scope, e.target.checked)}
-                                            className="rounded text-primary focus:ring-primary w-3.5 h-3.5 border-slate-300 dark:border-slate-600 dark:bg-slate-800" 
-                                          />
-                                          <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">{act}</span>
-                                        </label>
-                                      );
-                                    })}
-                                  </div>
+              {/* Right Column: Details for selectedRole */}
+              <div className="w-full md:w-3/4 flex flex-col gap-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                    Privilèges pour: <span className="text-primary text-xs ml-1">{selectedRole}</span>
+                  </p>
+                </div>
+                
+                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] uppercase tracking-wider text-slate-500">
+                        <th className="p-3 border-b border-slate-200 dark:border-slate-800">Module</th>
+                        <th className="p-3 border-b border-slate-200 dark:border-slate-800">Actions Permises</th>
+                        <th className="p-3 border-b border-slate-200 dark:border-slate-800 text-right">Périmètre (Scope)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-xs text-slate-700 dark:text-slate-300">
+                      {(() => {
+                        const def = rolePermissions[selectedRole];
+                        if (!def) return (<tr><td colSpan={3} className="p-4 text-center">Aucune donnée</td></tr>);
+                        
+                        const modules = Object.keys(def) as AppModule[];
+                        const moduleAvailableActions: Record<AppModule, string[]> = {
+                          dashboard: ['voir'],
+                          equipment: ['voir', 'creer', 'modifier', 'supprimer', 'importer', 'exporter'],
+                          preventive: ['voir', 'creer', 'modifier', 'supprimer', 'lancer', 'suspendre', 'approuver', 'executer'],
+                          corrective: ['voir', 'creer', 'modifier', 'supprimer', 'valider', 'rejeter', 'planifier', 'creer_ot'],
+                          workorders: ['voir', 'creer', 'modifier', 'supprimer', 'assigner', 'demarrer', 'suspendre', 'terminer', 'cloturer', 'exporter'],
+                          inventory: ['voir', 'creer', 'modifier', 'supprimer', 'entree', 'sortie', 'inventaire'],
+                          suppliers: ['voir', 'creer', 'modifier', 'supprimer'],
+                          reports: ['voir', 'exporter_pdf', 'exporter_excel', 'creer_rapport'],
+                          admin: ['voir', 'gerer_utilisateurs', 'gerer_roles', 'parametres']
+                        };
 
-                                  <div className="w-32 shrink-0 flex justify-end">
-                                    <select 
-                                      value={perms.scope}
-                                      onChange={(e) => updateRolePermission(role, mod, perms.actions[0] || 'voir', e.target.value as DataScope, true)}
-                                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded text-[10px] font-bold py-1 px-2 focus:ring-primary focus:border-primary w-full outline-none"
-                                    >
-                                      <option value="mes_donnees">Mes Données</option>
-                                      <option value="mon_equipe">Mon Équipe</option>
-                                      <option value="toute_usine">Toute l'usine</option>
-                                    </select>
-                                  </div>
+                        return modules.map((mod) => {
+                          const perms = def[mod];
+                          if (!perms) return null;
+                          return (
+                            <tr key={mod} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                              <td className="p-3 font-bold capitalize align-top w-32">{mod}</td>
+                              <td className="p-3 align-top">
+                                <div className="flex flex-wrap gap-3">
+                                  {moduleAvailableActions[mod]?.map((act) => {
+                                    const hasAction = perms.actions.includes(act);
+                                    return (
+                                      <label key={act} className="flex items-center gap-1.5 cursor-pointer">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={hasAction}
+                                          onChange={(e) => updateRolePermission(selectedRole, mod, act, perms.scope, e.target.checked)}
+                                          className="rounded text-primary focus:ring-primary w-3.5 h-3.5 border-slate-300 dark:border-slate-600 dark:bg-slate-800" 
+                                        />
+                                        <span className="text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">{act}</span>
+                                      </label>
+                                    );
+                                  })}
                                 </div>
-                              );
-                            })}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                              </td>
+                              <td className="p-3 align-top w-40 text-right">
+                                <select 
+                                  value={perms.scope}
+                                  onChange={(e) => updateRolePermission(selectedRole, mod, perms.actions[0] || 'voir', e.target.value as DataScope, true)}
+                                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-md text-[10px] font-bold py-1.5 px-2 focus:ring-primary focus:border-primary w-full outline-none"
+                                >
+                                  <option value="mes_donnees">Mes Données</option>
+                                  <option value="mon_equipe">Mon Équipe</option>
+                                  <option value="toute_usine">Toute l'usine</option>
+                                </select>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
